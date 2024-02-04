@@ -1,0 +1,133 @@
+---
+title: "Shopping Trends"
+output: html_document
+date: "2024-02-03"
+---
+
+#Step 1: Importing Dataset into R
+```{r}
+library(readr)
+shopping_data <- read_csv("shopping_trends_updated.csv")
+```
+
+
+##The data can be imported in R using the function read.csv(). For the assignment I have used Customer Shopping Trends Dataset. I have downloaded this dataset from Kaggle. Moreover, adding the link of the website for reference.
+https://www.kaggle.com/datasets/iamsouravbanerjee/customer-shopping-trends-dataset
+
+
+#Step 2: Descriptive Statistics for Quantitative Variables
+```{r}
+#The purchase amounts ranges from $20 to $100,where the median and mean purchase quantities are close to $60, demonstrating a balanced distribution around the mid-range price point. While there are low- and high-end purchases, most transactions are moderately priced. To match client spending, the company may target products around this median value.
+summary(shopping_data$`Purchase Amount (USD)`)
+
+#The age of customer ranges from 18 to 70, with average age mid-40s.This implies a mature consumer base, suggesting the items or services are suitable for this age range.
+summary(shopping_data$'Age')
+
+#Review ratings range from 2.5 to 5, with center tendency of 3.75 stars.To increase the average rating to 5, improve customer satisfaction in areas with negative comments.
+summary(shopping_data$`Review Rating`)
+
+#Customers' past purchases range from 1 to 50, with a median of 25. Customers who buy again are loyal. 
+summary(shopping_data$`Previous Purchases`)
+
+```
+
+#Summary() function is used for data exploration and analysis. For numeric variables, it provides mean,median and mode.
+##Here the quantitative variables are Purchase Amount, Age, Review Rating and Previous Purchases.
+
+
+#Frequency of Categorical Variables
+```{r}
+#The data clearly shows that males have made more purchases as compared to females.
+table(shopping_data$Gender)
+
+#Blouse,Pants and Jewellery appears to be the most popular items as compared to Jeans.
+table(shopping_data$`Item Purchased`)
+
+#The data showcase that most purchases were made in the states of Montana and California and least purchases were made in the states of Kansas and Rhode Island.
+table(shopping_data$Location)
+
+##Clothing appears to be the most popular item followed by Accessories, Footwear and Outerwear.
+table(shopping_data$Category)
+
+#Fall and spring have somewhat higher purchases than Summer and Winter, suggesting seasonal influences on shopping behavior.
+table(shopping_data$Season)
+
+#Credit, PayPal, and Cash are most prevalent, while Venmo and Bank Transfer are least. It may reflect client convenience and security.
+table(shopping_data$`Payment Method`)
+
+#highest purchase were made every 3 months followed by annual and quater purchases.
+table(shopping_data$`Frequency of Purchases`)
+
+#Free and Standard Shipping are most popular, indicating that shoppers appreciate cost-saving.
+table(shopping_data$`Shipping Type`)
+
+#The data suggests a preference for size M, followed by L, S, and XL.Can help in inventory management.
+table(shopping_data$`Size`)
+
+#Olive, Yellow, and Teal are more popular than Peach, Violet, and Turquoise.This preference can help in product offerings.
+table(shopping_data$`Color`)
+
+# As the data suggests promo codes were not that widely used.
+table(shopping_data$`Promo Code Used`)
+
+#Not many people have subscribed to the particular retailer (online and offline)
+table(shopping_data$'Subscription Status')
+
+#Less amount of Discounts coupons were applied while purchasing items.
+table(shopping_data$`Discount Applied`)
+
+```
+
+##Table() function provides tabulation of the categorical variables and provides frequency. All the above-mentioned variables are qualitative, color, size, location and items purchased to name a few.
+
+
+#Step 4:Transforming one variable
+
+#Transforming 'Purchase Amount(USD)' into a categorical variable where 'Low'(<$50),'Medium'($50-$100),'High'(>$100)
+```{r}
+shopping_data$"Purchase Amount Category" <- cut(shopping_data$"Purchase Amount (USD)", 
+                                              breaks = c(0, 50, 100, Inf),
+                                              labels = c("Low", "Medium", "High"))
+shopping_data
+```
+
+
+#cut() function is used to divide the purchase amount into different categories, namely, 'Low','Medium' and 'High'.
+#Breaks is used for defining the boundaries of the intervals
+#Labels for assigning the lable to each interval
+
+#Step 5: Plot Quantitative Variable and Scatterplot
+
+#Plotting a histogram of Purchase Amount (Quatitative Variable)
+
+```{r}
+hist(shopping_data$`Purchase Amount (USD)`, main = "Histogram of Purchase Amount (USD)", xlab = "Purchase Amount", col = "turquoise", pch = 20)
+```
+
+##The above histogram showcase that purchase amount is evenly distributed, which clearly indicates that the customers are interested in wide range of product prices.It's an uniform distribution of purchase amounts ranging from $20 to $100.
+
+#hist() function is used to plot a histogram
+#shopping_data$Purchase Amount (USD) is used to specify the purchase amount column in the dataset
+#main gives the title of the histogram, here the title is "Histogram of Purchase Amount (USD)"
+#xlab is used to label the x-axis, which in this case is "Purchase Amount"
+#col function is used to fill color to the histogram bars, I have used turquoise in the above case.
+#pch stands for plotting character. By adjusting 'pch' value we can alter the appearance to make the graphs and plots visually appealing.Here, I have assigned 20 value which gives solid circles.
+
+
+#Plotting a scatter plot of 'Purchase Amount (USD)' VS 'Age'
+```{r}
+plot(shopping_data$`Purchase Amount (USD)`, shopping_data$Age, main = "Purchase Amount (USD) vs. Age", xlab = "Purchase Amount (USD)", ylab = "Age", col = "purple", pch = 25)
+```
+
+#Scatter plot shows that there is no significat relationship between age and purchase amount.All the age groups are likely to spend equally across the range of purchase amount.
+
+#plot() function is used to plot a simple scatterplot
+#shopping_data$Purchase Amount (USD) is used to specify the purchase amount column in the dataset
+
+
+#shopping_data$Age is used to specify the Age column in the dataset
+#main gives the title of the scatterplot, here the title is "Purchase Amount (USD) vs. Age"
+#xlab is used to label the x-axis, which in this case is "Purchase Amount"
+#ylab is used to label the y-axis, which in this case is "Age"
+#col function is used to fill color to scatter plot, I have used purple in the above case.
+#pch stands for plotting character. By adjusting 'pch' value we can alter the appearance to make the graphs and plots visually appealing.Here, I have assigned 25 value which gives filled triangle pointing downwards.
