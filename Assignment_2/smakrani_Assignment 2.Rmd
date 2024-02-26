@@ -1,0 +1,213 @@
+---
+title: "kNN For Classification"
+output: html_document
+date: "2024-02-25"
+---
+
+
+
+# Install and load required packages
+
+```{r}
+library(caret)
+library(class)
+library(caTools)
+```
+
+# Importing the Dataset in R
+
+```{r}
+library(readxl)
+bank_csv<- read.csv("Downloads/UniversalBank.csv")
+```
+
+# Removing ID and ZIP Code
+
+```{r}
+library(dplyr)
+bank_csv_new <- select(bank_csv,-ID,-ZIP.Code)
+class(bank_csv_new$Education) = "character"
+class(bank_csv_new$Education)
+#Converting Education into Numeric values
+```
+
+# Converting categorical variables to dummy variables
+
+```{r}
+library(caret)
+library(ggplot2)
+library(lattice)
+dummypaper1 <- dummyVars(~Education,data=bank_csv_new) 
+educationDummy <- predict(dummypaper1,bank_csv_new) 
+head(educationDummy)
+```
+#Adding the dummy variables of education to the initial data set and removing the Education numeric variable:
+
+```{r}
+bank_csv_new_wo_education <- select(bank_csv_new,-Education)
+bank1_dummy <- cbind(bank_csv_new_wo_education[,-13],educationDummy)
+head(bank1_dummy)
+
+bank1_dummy <- bank1_dummy %>% select(Personal.Loan, everything())
+bank1_dummy$Personal.Loan = as.factor(bank1_dummy$Personal.Loan)
+head(bank1_dummy)
+
+```
+
+# Partition the data into training (60%) and validation (40%) sets
+```{r}
+
+
+set.seed(123) # For reproducibility
+train_index = createDataPartition(bank1_dummy$Personal.Loan,p=0.60, list=FALSE)
+train_data = bank1_dummy[train_index,]
+validation_data = bank1_dummy[-train_index,] 
+test_data <- data.frame(Age=40,Experience=10,Income=84,Family=2,CCAvg=2,Mortgage=0,SecuritiesAccount=0,CDAccount=0,Online=1,CreditCard=1,Education1=0,Education2=1,Education3=0)
+
+summary(train_data)
+```
+
+```{r}
+summary(validation_data)
+```
+```{r}
+summary(test_data)
+```
+# Standardizing the data set before model processing
+```{r}
+colnames(bank1_dummy)
+```
+
+
+
+```{r}
+normalizedValue <- c("Age","Experience","Income","Family","CCAvg","Mortgage") # Obtain every numerical variable.
+train_label <- train_data[,normalizedValue] 
+valid_label <- validation_data[,normalizedValue] 
+test_normal <- test_data[,normalizedValue] 
+normalizedData <- preProcess(train_data[,normalizedValue], method=c("center", "scale"))
+train_label <- predict(normalizedData,train_data)
+valid_label <- predict(normalizedData, validation_data)
+test_normal <- predict(normalizedData, test_normal)
+# Verifying the Value
+summary(train_label)
+```
+```{r}
+summary(valid_label)
+```
+```{r}
+summary(test_normal)
+```
+```{r}
+set.seed(99)
+Exploregrid <- expand.grid(k=seq(1:30))
+act <- train(Personal.Loan~.,data=train_label,method="knn",tuneGrid=Exploregrid)
+act
+```
+```{r}
+library(class)
+Train_forecaster <- select(train_label,-Personal.Loan)
+Test_forecaster <- cbind(test_normal,test_data[,7:13])
+Validation_forecaster <- select(valid_label,-Personal.Loan)
+train_label <- train_label[,1]
+valid_label <- valid_label[,1]
+forecaster_valid_labels <- knn(Train_forecaster,Validation_forecaster,cl = train_label,k=1)
+head(forecaster_valid_labels)
+```
+```{r}
+forecaster_Test_Labels <- knn(Train_forecaster,Test_forecaster,cl = train_label,k=1)
+head(forecaster_Test_Labels)
+```
+# The model predicts that the customer will not apply for a personal loan based on the test data provided.
+```{r}
+library(caret)
+accurate.df <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
+# compututing the Knn
+for(i in 1:14) {
+  knn.pred <- knn(Train_forecaster,Validation_forecaster,cl = train_label,k=i)
+  accurate.df[i, 2] <- confusionMatrix(knn.pred, valid_label)$overall[1] 
+}
+accurate.df
+```
+# 1 is the best value for k as it yeilds the maximum accuracy at 96.75%.
+
+```{r}
+library(gmodels)
+forecaster_valid_labels <- knn(Train_forecaster,Validation_forecaster,cl = train_label,k=1)
+head(forecaster_valid_labels)
+```
+```{r}
+CrossTable(x = valid_label,y = forecaster_valid_labels,prop.chisq = FALSE)
+```
+# Confusion matrix of validation data set at k=1 is shown above
+
+
+```{r}
+forecaster_Test_Labels <- knn(Train_forecaster,Test_forecaster,cl = train_label,k=1)
+head(forecaster_Test_Labels)
+```
+# The model predicts that the customer will not apply for a personal loan based on the best k value of 1.
+
+
+```{r}
+library(splitTools)
+
+set.seed(14)
+splitData <- partition(bank1_dummy$Age, p = c(train = 0.5, valid = 0.3, test = 0.2))
+str(splitData)
+```
+
+```{r}
+train_bank <- bank1_dummy[splitData$train, ]
+valid_bank <- bank1_dummy[splitData$valid, ]
+test_bank <- bank1_dummy[splitData$test, ]
+```
+```{r}
+train.norm.df <- train_bank[,normalizedValue] # Filter the numeric variables in train data
+valid.norm.df <- valid_bank[,normalizedValue] # Filter the numeric variables in validation data
+test.norm.df <- test_bank[,normalizedValue] # Filter the numeric variables in test data
+normalized_bank.ub <- preProcess(train_bank[,normalizedValue], method=c("center", "scale")) # Using preProcess find out the normalized values of numeric variables in train data and apply it to validation and test data
+train.norm.df <- predict(normalized_bank.ub,train_bank)
+valid.norm.df <- predict(normalized_bank.ub, valid_bank)
+test.norm.df <- predict(normalized_bank.ub, test_bank)
+# Verifying the normalized values
+summary(train.norm.df)
+```
+```{r}
+summary(valid.norm.df)
+```
+```{r}
+summary(test.norm.df)
+```
+```{r}
+Train_forecaster_bank <- select(train.norm.df,-Personal.Loan)
+Valid_forecaster_bank <- select(valid.norm.df,-Personal.Loan)
+Test_forecaster_bank <- select(test.norm.df,-Personal.Loan)
+Train_labels_bank <- train.norm.df[,1]
+valid_labls_bank <- valid.norm.df[,1]
+Test_labels_bank <- test.norm.df[,1]
+forecaster_train_labels_bank <- knn(Train_forecaster_bank,Train_forecaster_bank,cl = Train_labels_bank,k=1)
+head(forecaster_train_labels_bank)
+```
+```{r}
+forecaster_valid_labels_bank <- knn(Train_forecaster_bank,Valid_forecaster_bank,cl = Train_labels_bank,k=1)
+head(forecaster_valid_labels_bank)
+```
+```{r}
+forecaster_test_labels_bank <- knn(Train_forecaster_bank,Test_forecaster_bank,cl = Train_labels_bank,k=1)
+head(forecaster_test_labels_bank)
+```
+```{r}
+confusionMatrix(forecaster_train_labels_bank,Train_labels_bank,positive = "1")
+```
+
+```{r}
+confusionMatrix(forecaster_valid_labels_bank,valid_labls_bank,positive = "1")
+```
+
+```{r}
+confusionMatrix(forecaster_test_labels_bank,Test_labels_bank,positive = "1")
+```
+
+
+# As evident from the confusion matrices, accuracy for training data is 100%, accuracy for testing data is 95.61%, and the accuracy for validation data is 95.28%.
