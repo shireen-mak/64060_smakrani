@@ -1,0 +1,170 @@
+---
+title: "Pharmaceutical Dataset"
+output: html_document
+date: "2024-03-16"
+---
+
+# Step 1: Importing The Dataset in R
+
+```{r}
+# Loading the necessary libraries
+library(tidyverse)
+library(ggplot2)
+
+#The data can be imported in R using the function read.csv()
+library(readr)
+pharma_data<-read.csv("~/Downloads/Pharmaceuticals (1).csv")
+
+# head() function is used to understand the content in the dataset.
+head(pharma_data)
+
+# str() function is used to understand the structure in the dataset.
+str(pharma_data)
+```
+
+# Step 2: Checking For Missing Values in The Dataset
+
+```{r}
+
+#Descriptive Statistics
+summary(pharma_data)
+
+# Counting the number of missing values in the entire dataset
+total_missing_values <- sum(is.na(pharma_data))
+
+# Counting NA values in each column of the dataset
+missing_values_per_column <- colSums(is.na(pharma_data))
+
+# Printing the counts of missing values for each column
+print(missing_values_per_column)
+
+```
+
+# Step 3:Preprocessing The Data: Selecting the Numerical Variables 
+
+```{r}
+# Select only the numerical variables
+numerical_indices <- c(3, 4, 5, 6, 7, 8, 9, 10, 11) 
+pharma_data_prepared <- pharma_data[, numerical_indices]
+pharma_data_prepared
+```
+
+# Step 4: Normalizing The Data
+
+```{r}
+pharma_data_normalized <- as.data.frame(scale(pharma_data_prepared))
+```
+
+# Step 5: Determining The Number of Clusters
+
+```{r}
+wcss <- sapply(3:11, function(k) {kmeans(pharma_data_normalized, k, nstart = 11)$tot.withinss})
+
+# Plotting the elbow method results
+plot(3:11, wcss, type='b', main='Elbow Method', xlab='Number of clusters', ylab='WCSS')
+
+```
+
+#The elbow plot suggests that 3 clusters is the appropriate number of clusters to use.
+
+
+# Step 6: Clustering With k-Means
+
+```{r}
+# Replacing k with the chosen number of clusters
+set.seed(123)
+k <- 3 #Assuming 3 is the optimal number of clusters
+km_result <- kmeans(pharma_data_normalized, centers = k, nstart = 25)
+
+# Adding the cluster assignments to the original dataset
+pharma_data$Cluster <- km_result$cluster
+
+# Analyzing the financial structure of the pharmaceutical industry based on the clusters
+cluster_means <- aggregate(. ~ pharma_data$Cluster, data=pharma_data_normalized, FUN=mean)
+print(cluster_means)
+
+```
+
+# Step 7: Analysing And Interpreting The Clusters
+
+```{r}
+# Summary statistics for each cluster
+aggregate(pharma_data_prepared, by=list(pharma_data$Cluster), FUN=mean)
+
+# Visualizing clusters (example using PCA for dimensionality reduction)
+library(ggplot2)
+pca_res <- prcomp(pharma_data_normalized)
+pca_data <- data.frame(pca_res$x[,1:2], Cluster=pharma_data$Cluster)
+
+ggplot(pca_data, aes(x=PC1, y=PC2, color=as.factor(Cluster))) +
+  geom_point() +
+  theme_minimal() +
+  labs(color="Cluster")
+
+```
+
+#Cluster 1: 
+
+#Moderate market size but riskier due to a higher Beta.Valued highly by the market, as indicated by a high P/E ratio, possibly due to growth expectations.Less efficient in generating profit from equity and assets.Conservative with debt but have only moderate growth and the lowest profitability in the group.
+
+#Cluster 2: 
+
+#The largest companies by market capitalization, implying dominance in the industry.Less volatile, indicating stability.More attractively valued with lower P/E ratios, suggesting they're seen as solid investments.Highly efficient, with the best use of equity and assets to generate profits.Good revenue generation capability, moderate leverage, and the highest profitability, indicating strong financial health.
+
+#Cluster 3: 
+
+#Smallest by market capitalization, suggesting younger or more niche companies.The most volatile, with the highest Beta, indicating higher market risk.Moderate valuation and efficiency in using equity and assets compared to the other clusters.Aggressive growth strategy as evidenced by the highest revenue growth and high leverage.Moderate profitability, which is respectable considering their aggressive expansion
+
+#Through the analysis of financial performance, it is possible to derive insights regarding the pharmaceutical industry's structure as well as the comparative strengths and weaknesses of the companies that operate within it.This can help us decide where to spend our money or come up with ways to compete in the market.
+
+
+# Step 8: Identifying Patterns With Respect to Numerical Variables
+
+```{r}
+# Load the necessary library
+library(dplyr)
+
+# Calculating the median recommendation for each cluster using aggregate function
+recommendations <- aggregate(pharma_data$Median_Recommendation, by = list(Cluster = pharma_data$Cluster), FUN = median, na.rm = TRUE)
+
+# Renaming the columns for clarity
+colnames(recommendations) <- c("Cluster", "Median_Recommendation")
+
+# Printing the median recommendations
+print(recommendations)
+
+```
+
+#The non-numerical variables were not used to make the clusters, so we can't tell if there is a trend in the clusters when it comes to these variables. We would have to do different analyses or use other methods, like visualisation or feature selection, to look for any possible patterns in these variables, for instance, bar and pie charts.We can't directly look at the non-numerical variables in the context of the clustering analysis, but we can look at them on their own and see if the cluster labels help us find any patterns.
+
+# Step 9: Analysis And Interpretation (2)
+
+```{r}
+# Loading necessary library
+library(dplyr)
+
+# Calculating the average values of the numerical variables for each cluster
+averages <- pharma_data %>%
+  group_by(Cluster) %>%
+  summarise(
+    MarketCapitalization = mean(Market_Cap, na.rm = TRUE),
+    Beta = mean(Beta, na.rm = TRUE),
+    PriceEarningsRatio = mean(PE_Ratio, na.rm = TRUE),
+    ReturnOnEquity = mean(ROE, na.rm = TRUE),
+    ReturnOnAssets = mean(ROA, na.rm = TRUE),
+    AssetTurnover = mean(Asset_Turnover, na.rm = TRUE),
+    Leverage = mean(Leverage, na.rm = TRUE),
+    EstimatedRevenueGrowth = mean(Rev_Growth, na.rm = TRUE),
+    NetProfitMargin = mean(Net_Profit_Margin, na.rm = TRUE)
+  )
+
+# Printing the average values
+print(averages)
+
+```
+
+#Cluster 1: Cautious Optimizers - This cluster consists of low-performing firms in the pharmaceutical industry.These companies show cautious financial metrics, with moderate market capitalization and profitability. Their lower leverage and beta indicate a cautious approach to growth and stability.
+
+#Cluster 2: Market Leaders - This cluster consists of top-performing firms in the pharmaceutical industry, characterized by above-average market capitalization combined with low volatility, suggest these are the stable and dominant companies in the market, hence "Market Leaders."
+
+#Cluster 3: Aggressive Growers - This cluster consists of middle-performing firms in the pharmaceutical industry. The combination of the highest revenue growth and high leverage indicates these companies are aggressively investing in growth, likely in innovative or pioneering endeavors, but with significant financial leverage.
