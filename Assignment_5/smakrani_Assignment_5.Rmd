@@ -1,0 +1,215 @@
+---
+title: "Cereals"
+output: html_document
+date: "2024-04-03"
+---
+# Executive Summary
+
+#Hierarchical Clustering Analysis:
+
+#1.Single Linkage: Exhibited chaining, creating elongated clusters, which may not capture tight groupings effectively.
+
+#2.Complete Linkage: Produced more balanced and compact clusters but might be sensitive to outliers.
+
+#3.Average Linkage: Achieved a middle ground with minimized variances within clusters and worked well for well-separated groups.
+
+#4.Ward's Method: Formed compact and highly similar clusters within groups, creating more spherical clusters and preferred for consistent cluster sizes.
+
+#Cluster Consistency and Stability:
+
+#The consistency matrix revealed a high stability score of approximately 0.8378 (83.78%), indicating reliable clustering with partition B closely matching the full dataset.Clusters 1 to 3 showed strong consistency, while cluster 4 was less stable or very small, as it lacked consistent assignment.
+
+#Nutritional Profile Interpretation of the "Healthiest" Cluster:
+
+#1.Moderate Calories: Suitable for managing children's caloric intake.
+
+#2.Higher Protein: Beneficial for growth and contributing to satiety.
+
+#3.Moderate Fat: Appropriate for children's diets, assuming low saturated/trans fats.
+
+#4.Moderate Sodium: Not excessive, but ideally, it should be low in cereals.
+
+#5.Good Fiber Content: Important for digestive health and satiety.
+
+#6.Moderate Carbohydrates: Not too dense, aiding in blood sugar management.
+
+#7.Lower Sugars: Preferable to be low for a healthier diet.
+
+#8.Higher Potassium: Valuable for heart health and other functions.
+
+#9.Decent Vitamin Content: Crucial for overall health, and fortification can enhance nutritional value.
+
+#The analysis revealed distinct clusters with meaningful nutritional profiles.The healthiest cluster, chosen based on nutritional balance, shows a promising combination of moderate to higher levels of beneficial nutrients like fiber and protein and lower levels of less desirable nutrients such as sugars and sodium.This balanced nutritional profile aligns with the goal of selecting healthy cereals for elementary public school cafeterias.In summary, the chosen method and the nutritional analysis support the selection of a range of cereals that can contribute to a healthy diet for children, with the identified cluster reflecting a balanced nutritional profile.
+
+# Data Analysis
+
+# Step 1:Preliminary data inspection
+
+```{r}
+
+# Loading necessary libraries
+library(tidyverse)  # For data manipulation
+library(cluster)    # For hierarchical clustering
+
+# Loading the dataset
+cereals <- read.csv("~/Downloads/Cereals (2).csv")
+View(cereals)
+str(cereals)
+summary(cereals)
+
+# Removing rows with missing values
+cereals_new <- na.omit(cereals)
+
+```
+
+
+# Step 2: Normalizing The Data
+
+```{r}
+
+normalize_data <- function(x) {(x - min(x)) / (max(x) - min(x))}
+
+# Identifying numeric columns (excluding known non-numeric columns more dynamically)
+numeric_col <- sapply(cereals_new, is.numeric)
+
+# Applying normalization only on numeric columns
+cereals_normalized <- as.data.frame(lapply(cereals_new[,numeric_col], normalize_data))
+
+# Hierarchical clustering with different linkage methods
+hc_single <- agnes(cereals_normalized, method = "single")
+hc_complete <- agnes(cereals_normalized, method = "complete")
+hc_average <- agnes(cereals_normalized, method = "average")
+hc_ward <- agnes(cereals_normalized, method = "ward")
+
+# Ploting dendrograms to visualize the clustering
+par(mfrow=c(2,2))  # Arrange plots in a 2x2 grid
+plot(hc_single, main = "Single Linkage",which.plots = 2)
+plot(hc_complete, main = "Complete Linkage",which.plots = 2)
+plot(hc_average, main = "Average Linkage",which.plots = 2)
+plot(hc_ward, main = "Ward's Method",which.plots = 2)
+```
+
+#1.For Single Linkage, the dendrogram suggests that there's a tendency for "chaining", where clusters can end up being strung out over long distances, which is a characteristic weakness of this method. It results in a less compact clustering and is generally not preferred for finding tight clusters.
+
+#2.The Complete Linkage method shows a more balanced dendrogram, with more evenly sized clusters. It avoids chaining and tends to find more compact clusters. However, it can be sensitive to outliers and may form clusters in which members are not very similar to each other.
+
+#3.The Average Linkage method tends to create clusters that balance the weaknesses of single and complete linkage, resulting in groups where variances within clusters are minimized. This method generally works well when clusters are relatively well separated and of different sizes.
+
+#4.Lastly, Ward's Method shows clusters that are quite compact and with relatively high levels of similarity within each cluster. Ward's method tends to create more spherical clusters and is often preferred for its tendency to produce clusters of similar sizes, which can be a desirable feature for many analyses.
+
+# Step 3: Partioning The Data
+
+```{r}
+set.seed(42)  # for reproducibility
+partition_data <- sample(nrow(cereals_normalized))
+partition_A <- cereals_normalized[partition_data[1:(length(partition_data) / 2)], ]
+partition_B <- cereals_normalized[partition_data[(length(partition_data) / 2 + 1):length(partition_data)], ]
+
+# Clustering partition A
+hc_A <- agnes(partition_A, method = "ward")
+clusters_A <- cutree(as.hclust(hc_A), k = 4)  
+
+# Calculating centroids of clusters in partition A
+centroids_A <- aggregate(partition_A, by=list(clusters_A), FUN=mean)
+centroids_A <- centroids_A[, -1]
+
+# Assigning clusters to partition B
+assign_clusters_B <- function(row, centroids) {
+  distances <- apply(centroids, 1, function(centroid) sum((row - centroid)^2))
+  return(which.min(distances))
+}
+
+clusters_B <- apply(partition_B, 1, function(row) assign_clusters_B(row, centroids_A))
+
+# Performing clustering on the entire dataset to get the 'true' cluster assignments
+hc_full <- agnes(cereals_normalized, method = "ward")
+clusters_full <- cutree(as.hclust(hc_full), k = 4)
+
+# Comparing the cluster assignments for partition B from the centroids of A to the full dataset
+consistency_matrix <- table(Partition_B = clusters_B, Full_Data = clusters_full[partition_data[(length(partition_data) / 2 + 1):length(partition_data)]])
+
+print(consistency_matrix)
+
+# We can calculate a measure of consistency by comparing the assignments.
+# For example, a simple consistency score can be the sum of the diagonal of the consistency matrix
+# divided by the total number of observations in partition B.
+consistency_score <- sum(diag(consistency_matrix)) / nrow(partition_B)
+print(paste("Consistency score:", consistency_score))
+```
+
+#Interpreting The Matrix:
+
+#1. 16 cereals from partition B that were assigned to cluster 1 using centroids from partition A were also assigned to cluster 1 when the full dataset was used.
+
+#2. 6 cereals were consistently assigned to cluster 2.
+
+#3. 9 cereals were consistently assigned to cluster 3.
+
+#4. There were no cereals consistently assigned to cluster 4 (it seems like only one cereal was assigned to cluster 4 using partition A's centroids, but in the full data clustering, it was assigned to cluster 1).
+
+#The Consistency score of approximately 0.8378 (83.78%) indicates that around 83.78% of the cereals from partition B were assigned to the same cluster as they were when the entire dataset was used for clustering. This high score suggests good stability of the clusters — most cereals were grouped into the same cluster even when only using half the data to define the clusters
+
+#1. Structure of the Clusters:
+
+#The clusters formed using Ward's method appear to have a meaningful structure since most cereals in partition B are assigned to the same clusters as in the full dataset clustering. This suggests that the features used for clustering have a strong influence on the groupings and that these groupings are relevant across different samples of the data.The matrix indicates that cluster 1 is the largest and most consistent, with 16 cereals from partition B matching their assignments in the full dataset.Clusters 2 and 3 also show a good level of consistency, although they appear to be smaller in size.Cluster 4 seems to be the least stable or perhaps the smallest, as it has no cereals consistently assigned in both partition B and the full dataset.
+
+#2. Stability of the Clusters:
+
+#The high consistency score of approximately 0.8378 (or 83.78%) indicates a high level of stability. This means that the majority of the cereals are grouped into the same clusters regardless of whether half the dataset (partition A) or the full dataset is used for clustering.The presence of values on the diagonal for clusters 1, 2, and 3 in the consistency matrix further supports the notion that these clusters are stable.The lack of consistent assignments for cluster 4 could suggest that it may be more sensitive to the particular sample of data used to form the clusters. This could be due to the cereals in this cluster having more diverse nutritional profiles or being outliers compared to other cereals, leading to less consistent clustering.The zero values in the off-diagonal cells indicate there are very few instances where a cereal is assigned to one cluster in the full dataset and a different cluster in partition B. This is a positive indication of cluster stability.
+
+
+# Step 5: Performing Clustering on The Entire Normalized Dataset
+
+```{r}
+hc_final <- agnes(cereals_normalized, method = "ward")
+final_clusters <- cutree(as.hclust(hc_final), k = 4) 
+
+# Computing centroids of the clusters
+centroids <- aggregate(cereals_normalized, by=list(final_clusters), FUN=mean)
+centroids <- centroids[, -1] 
+
+# Defining the criteria for "healthy cereals" based on nutritional information
+healthy_index <- which(
+  centroids$fiber == max(centroids$fiber) & 
+  centroids$sugar == min(centroids$sugars) &
+  centroids$sat_fat == min(centroids$fat) &
+  centroids$vitamins == max(centroids$vitamins) &
+  centroids$protein == max(centroids$protein)
+)
+
+# Scoring each cluster based on health criteria
+health_scores <- centroids$fiber / max(centroids$fiber) + 
+                 (max(centroids$sugars) - centroids$sugars) / max(centroids$sugars) +
+                 (max(centroids$fat) - centroids$fat) / max(centroids$fat) +
+                 centroids$vitamins / max(centroids$vitamins) +
+                 centroids$protein / max(centroids$protein)
+
+# Selecting the index of the cluster with the highest health score
+healthy_index <- which.max(health_scores)
+
+# Extracting the centroid for the healthiest cluster
+healthy_cluster <- centroids[healthy_index, ]
+print(healthy_cluster)
+```
+ 
+#1.Calories (0.5558442): This is a moderate level, suggesting the cereals are not too high in energy, which is appropriate for managing caloric intake, especially important for foods served to children.
+
+#2.Protein (0.4): A relatively higher protein content is usually desirable, as it can contribute to satiety and is essential for growth and repair, particularly for children.
+
+#3.Fat (0.2628571): The moderate fat content is suitable for children's diets, provided that the fat quality is good (low in saturated and trans fats).
+
+#4.Sodium (0.5241071): Sodium content appears to be moderate. For cereals, it’s generally preferable to have lower sodium, but the value shown does not indicate an excess.
+
+#5.Fiber (0.2408163): Fiber is a crucial component for digestive health and can help prevent overeating by creating a feeling of fullness.
+
+#6.Carbohydrates (0.5333333): Carbs are a primary energy source, and this moderate level indicates the cereals are not carbohydrate-dense, which could be beneficial for managing blood sugar levels.
+
+#7.Sugars (0.4666667): This value should be as low as possible, as high sugar content is not desirable in a healthy diet, especially for children.
+
+#8.Potassium (0.400907): Potassium is an important mineral for various bodily functions, including heart health, and a higher level is generally seen as beneficial.
+
+#9.Vitamins (0.3714286): The presence of vitamins is essential for various body functions and overall health, and fortified cereals can be a good source of daily vitamins for children.
+
+#Overall, this cluster's centroid suggests a balanced nutritional profile.
+
+
